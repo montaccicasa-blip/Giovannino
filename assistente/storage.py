@@ -16,6 +16,11 @@ def load():
         data = json.load(file)
     if not isinstance(data, dict) or not isinstance(data.get("istruzioni", ""), str) or not isinstance(data.get("attivita", []), list):
         raise ValueError("Il file dei dati locali non ha un formato valido.")
+    from .calendar import validate
+    for task in data.get("attivita", []):
+        if not isinstance(task, dict) or any(not isinstance(task.get(key, ""), str) for key in ("titolo", "data", "ora", "priorita", "note")):
+            raise ValueError("Il file dei dati locali contiene un'attività non valida.")
+        validate(task)
     return {"istruzioni": data.get("istruzioni", ""), "attivita": data.get("attivita", [])}
 
 

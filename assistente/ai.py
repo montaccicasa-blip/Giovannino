@@ -3,7 +3,7 @@ import os
 import re
 import urllib.error
 import urllib.request
-from datetime import date
+from datetime import date, datetime, timedelta
 from urllib.parse import urlsplit
 
 
@@ -58,7 +58,7 @@ def request(endpoint, key, body):
         raise ValueError("Richiesta AI non riuscita. Verifica indirizzo, modello, credenziali e connessione; riprova.") from None
 
 
-def demo(action, text, instructions, tasks):
+def demo(action, text, instructions, tasks, period="settimanale"):
     if action == "risposta":
         return "Bozza dimostrativa da modificare:\n\nGrazie per il messaggio. Ti risponderò appena possibile."
     if action == "azioni":
@@ -69,13 +69,22 @@ def demo(action, text, instructions, tasks):
                 continue
             match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", line)
             hour = re.search(r"\b(?:[01]\d|2[0-3]):[0-5]\d\b", line)
-            result.append({"titolo": line[:100], "data": match.group() if match else "", "ora": hour.group() if hour and match else "", "priorita": "Media", "note": line})
+            day = match.group() if match else ""
+            try:
+                if day:
+                    datetime.strptime(day, "%Y-%m-%d")
+            except ValueError:
+                day = ""
+            result.append({"titolo": line[:100], "data": day, "ora": hour.group() if hour and day else "", "priorita": "Media", "note": line})
         return json.dumps(result, ensure_ascii=False, indent=2)
-    ordered = sorted(tasks, key=lambda item: (item.get("data") or "9999", item.get("ora") or "99:99"))
+    today = date.today()
+    end = today + timedelta(days=0 if period == "giornaliero" else 6)
+    ordered = sorted((item for item in tasks if not item.get("data") or today.isoformat() <= item["data"] <= end.isoformat()),
+                     key=lambda item: (item.get("data") or "9999", item.get("ora") or "99:99", {"Alta": 0, "Media": 1, "Bassa": 2}.get(item.get("priorita"), 1)))
     if not ordered:
-        return "Nessun impegno inserito. Aggiungi attività con date e orari per organizzare il tempo."
-    return "Programma indicativo (verifica durata e conflitti):\n" + "\n".join(
-        f"- {item.get('data') or 'Data da definire'} {item.get('ora') or ''}: {item.get('titolo', '')}" for item in ordered)
+        return "Nessun impegno nel periodo scelto. Aggiungi attività con date e orari per organizzare il tempo."
+    return f"Programma {period} indicativo ({today.isoformat()} – {end.isoformat()}); verifica durate e conflitti:\n" + "\n".join(
+        f"- {item.get('data') or 'Data da definire'} {item.get('ora') or ''}: {item.get('titolo', '')} (priorità {item.get('priorita', 'Media')})" for item in ordered)
 
 
 def parse_tasks(text):
