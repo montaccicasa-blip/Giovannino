@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 
@@ -41,15 +41,15 @@ def fold(line):
 
 def make_ics(tasks):
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Assistente personale//IT", "CALSCALE:GREGORIAN"]
-    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for task in tasks:
         validate(task)
         if not task.get("data"):
             raise ValueError("Ogni evento da esportare deve avere una data.")
-        day = datetime.strptime(task["data"], "%Y-%m-%d")
+        day = datetime.strptime(task["data"].strip(), "%Y-%m-%d")
         lines += ["BEGIN:VEVENT", "UID:" + str(uuid.uuid4()) + "@assistente-personale", "DTSTAMP:" + stamp]
         if task.get("ora"):
-            start = datetime.strptime(task["data"] + " " + task["ora"], "%Y-%m-%d %H:%M")
+            start = datetime.strptime(task["data"].strip() + " " + task["ora"].strip(), "%Y-%m-%d %H:%M")
             lines += ["DTSTART:" + start.strftime("%Y%m%dT%H%M%S"), "DTEND:" + (start + timedelta(hours=1)).strftime("%Y%m%dT%H%M%S")]
         else:
             lines += ["DTSTART;VALUE=DATE:" + day.strftime("%Y%m%d"), "DTEND;VALUE=DATE:" + (day + timedelta(days=1)).strftime("%Y%m%d")]

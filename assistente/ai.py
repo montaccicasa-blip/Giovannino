@@ -102,6 +102,7 @@ def parse_tasks(text):
                 ("titolo", ""), ("data", ""), ("ora", ""), ("priorita", "Media"), ("note", ""))}
             if not all(isinstance(value, str) for value in task.values()):
                 raise ValueError
+            task = {key: value.strip() for key, value in task.items()}
             validate(task)
             result.append(task)
         return result
